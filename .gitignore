@@ -1,4 +1,5 @@
 *.o
+*.pc
 *.pyc
 *.dll
 *.exe
@@ -21,3 +22,4 @@ src/assets/*/sequences/*.seq
 src/assets/*/textures/*.bin
 src/generated
 tools/mkrom/mkrom
+.vscode/

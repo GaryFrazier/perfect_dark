@@ -309,7 +309,8 @@ $(B_DIR)/%.o: %.cpp
 # Clean rules
 
 clean:
-	rm -rf build/$(ROMID)-port
+	rm -rf build/$(ROMID)-port/src build/$(ROMID)-port/port
+
 
 allclean:
 	rm -rf build/*

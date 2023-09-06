@@ -5828,6 +5828,14 @@ struct menuitem g_CombatSimulatorMenuItems[] = {
 		0x00000003,
 		menuhandlerMpAdvancedSetup,
 	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
+		L_MISC_444,
+		0x00000004,
+		(void *)&g_MpQuickTeamMenuDialog,
+	},
 	{ MENUITEMTYPE_END },
 };
 

@@ -1,3 +1,16 @@
+#ifdef _WIN32 // Windows-specific headers
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#else // Unix-like systems headers
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
+#include <stdio.h>
+#include <string.h>
 #include <ultra64.h>
 #include "constants.h"
 #include "game/camdraw.h"
@@ -5788,6 +5801,10 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 
 // NETWORK STUFF HERE
 
+#define SERVER_IP "127.0.0.1"  // Change this to the IP address of your UDP server
+#define SERVER_PORT 34254      // Change this to the port your UDP server is listening on
+#define BUFFER_SIZE 10
+
 struct menuitem networkListDialogItems[] = {
 	{
 		MENUITEMTYPE_LABEL,
@@ -5812,6 +5829,64 @@ struct menudialogdef networkListDialog = {
 MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	if (operation == MENUOP_SET) {
+	#ifdef _WIN32
+		WSADATA wsaData;
+		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+			fprintf(stderr, "Failed to initialize Winsock\n");
+			return 1;
+		}
+	#endif
+
+		int sockfd;
+		struct sockaddr_in server_addr;
+		char buffer[BUFFER_SIZE];
+
+		// Create a UDP socket
+		if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+			perror("socket");
+			return 1;
+		}
+
+		// Configure server address
+		memset(&server_addr, 0, sizeof(server_addr));
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_port = htons(SERVER_PORT);
+		if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+			perror("inet_pton");
+			close(sockfd);
+			return 1;
+		}
+
+		// Send data to the server
+		const char *message = "Hello!";
+		if (sendto(sockfd, message, strlen(message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+			perror("sendto");
+			close(sockfd);
+			return 1;
+		}
+
+		printf("Sent: %s\n", message);
+
+		// Receive data from the server
+		socklen_t server_addr_len = sizeof(server_addr);
+		ssize_t bytes_received = recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&server_addr, &server_addr_len);
+		if (bytes_received == -1) {
+			perror("recvfrom");
+			close(sockfd);
+			return 1;
+		}
+
+		buffer[bytes_received] = '\0';
+		printf("Received: %s\n", buffer);
+
+		// Close the socket
+		close(sockfd);
+
+	#ifdef _WIN32 // Cleanup on Windows
+		WSACleanup();
+	#endif
+
+	
 		menuPushDialog(&networkListDialog);
 	}
 

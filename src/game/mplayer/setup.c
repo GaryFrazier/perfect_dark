@@ -5786,6 +5786,40 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 	{ MENUITEMTYPE_END },
 };
 
+// NETWORK STUFF HERE
+
+struct menuitem networkListDialogItems[] = {
+	{
+		MENUITEMTYPE_LABEL,
+		0,
+		MENUITEMFLAG_LESSLEFTPADDING,
+		L_MPMENU_192, // "Save a copy now?"
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkListDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	L_MPMENU_188, // "Game File Name"
+	networkListDialogItems,
+	NULL,
+	0,
+	NULL,
+};
+
+MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	if (operation == MENUOP_SET) {
+		menuPushDialog(&networkListDialog);
+	}
+
+	return 0;
+}
+
+// END NETWORK
+
 struct menudialogdef g_MpQuickTeamMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MISC_462, // "Quick Team"
@@ -5831,10 +5865,10 @@ struct menuitem g_CombatSimulatorMenuItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
+		MENUITEMFLAG_BIGFONT,
 		L_MISC_444,
 		0x00000004,
-		(void *)&g_MpQuickTeamMenuDialog,
+		networkInitDialog,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5870,3 +5904,5 @@ void func0f17fcb0(s32 silent)
 		sndStart(var80095200, SFX_EXPLOSION_809A, NULL, -1, -1, -1, -1, -1);
 	}
 }
+
+

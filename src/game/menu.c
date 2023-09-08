@@ -474,6 +474,8 @@ char *menuResolveText(uintptr_t thing, void *dialogoritem)
 				return "Join Server";
 			case 0x1000004:
 				return "Network";
+			case 0x1000005:
+				return "Network Error";
 			default:
 				return "NOT FOUND";
 		};

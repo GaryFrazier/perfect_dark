@@ -5799,51 +5799,19 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 	{ MENUITEMTYPE_END },
 };
 
-// NETWORK STUFF HERE
+// NETWORK BOILERPLATE
 
 #define SERVER_IP "127.0.0.1"  // Change this to the IP address of your UDP server
 #define SERVER_PORT 34254      // Change this to the port your UDP server is listening on
-#define BUFFER_SIZE 10
+#define BUFFER_SIZE 1024
 
-struct menuitem networkListDialogItems[] = {
-	{
-		MENUITEMTYPE_LABEL,
-		0,
-		MENUITEMFLAG_LESSLEFTPADDING,
-		L_MPMENU_192, // "Save a copy now?"
-		0,
-		NULL,
-	},
-	{ MENUITEMTYPE_END },
-};
-
-struct menudialogdef networkListDialog = {
-	MENUDIALOGTYPE_DEFAULT,
-	L_MPMENU_188, // "Game File Name"
-	networkListDialogItems,
-	NULL,
-	0,
-	NULL,
-};
-
-MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, union handlerdata *data)
-{
-	if (operation == MENUOP_SET) {
-	#ifdef _WIN32
-		WSADATA wsaData;
-		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-			fprintf(stderr, "Failed to initialize Winsock\n");
-			return 1;
-		}
-	#endif
-
+// returns error code
+int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
 		int sockfd;
 		struct sockaddr_in server_addr;
-		char buffer[BUFFER_SIZE];
-
+		
 		// Create a UDP socket
 		if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-			perror("socket");
 			return 1;
 		}
 
@@ -5852,53 +5820,70 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 		server_addr.sin_family = AF_INET;
 		server_addr.sin_port = htons(SERVER_PORT);
 		if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
-			perror("inet_pton");
 			close(sockfd);
 			return 1;
 		}
 
 		// Send data to the server
-		const char *message = "Hello!";
-		if (sendto(sockfd, message, strlen(message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+
+		if (sendto(sockfd, message, messageSize, 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
 			perror("sendto");
 			close(sockfd);
 			return 1;
 		}
 
-		printf("Sent: %s\n", message);
-
 		// Receive data from the server
 		socklen_t server_addr_len = sizeof(server_addr);
 		ssize_t bytes_received = recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&server_addr, &server_addr_len);
 		if (bytes_received == -1) {
-			perror("recvfrom");
 			close(sockfd);
 			return 1;
 		}
 
 		buffer[bytes_received] = '\0';
-		printf("Received: %s\n", buffer);
 
 		// Close the socket
 		close(sockfd);
 
-	#ifdef _WIN32 // Cleanup on Windows
-		WSACleanup();
-	#endif
-
-	
-		menuPushDialog(&networkListDialog);
-	}
-
-	return 0;
+		return 0;
 }
+
+
+// NETWORK ERROR STUFF
+
+struct menuitem networkErrorDialogItems[] = {
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_BIGFONT,
+		0x1000005,
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkErrorDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	0x1000004,
+	networkErrorDialogItems,
+	NULL,
+	0,
+	NULL,
+};
+
+
+
+// JOIN SERVER 
+
+
 
 struct menuitem networkJoinServerItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_BIGFONT,
-		0x1000003,
+		0x1000003,  // "Join Server"
 		0,
 		NULL,
 	},
@@ -5914,10 +5899,62 @@ struct menudialogdef networkJoinServerDialog = {
 	NULL,
 };
 
+
+// NETWORK STUFF HERE
+
+struct menuitem networkCreateDialogItems[] = {
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_BIGFONT,
+		0x1000002, // Create Server
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkCreateDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	0x1000002, // Create Server
+	networkCreateDialogItems,
+	NULL,
+	0,
+	NULL,
+};
+
+MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	
+	if (operation == MENUOP_SET) {
+		char buffer[BUFFER_SIZE];
+		unsigned char *message = "Hello!";
+
+		int error = sendNetworkRequest(buffer, message, sizeof(message));
+	
+		if (error == 1) {
+			menuPushDialog(&networkErrorDialog);
+		} else {
+			menuPushDialog(&networkCreateDialog);
+		}
+	}
+
+	return 0;
+}
+
 MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	if (operation == MENUOP_SET) {
-		menuPushDialog(&networkJoinServerDialog);
+		char buffer[BUFFER_SIZE];
+		unsigned char message[] = {0x1, 0x2};
+
+		int error = sendNetworkRequest(buffer, message, sizeof(message));
+	
+		if (error == 1) {
+			menuPushDialog(&networkErrorDialog);
+		} else {
+			menuPushDialog(&networkJoinServerDialog);
+		}
 	}
 
 	return 0;
@@ -5927,7 +5964,7 @@ struct menuitem networkHomeDialogItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
+		MENUITEMFLAG_BIGFONT,
 		0x1000002, // "Create Server"
 		0,
 		networkInitDialog,
@@ -5954,6 +5991,13 @@ struct menudialogdef networkHomeDialog = {
 
 MenuItemHandlerResult networkHomeDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
 {
+	#ifdef _WIN32
+		WSADATA wsaData;
+		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+			fprintf(stderr, "Failed to initialize Winsock\n");
+		}
+	#endif
+
 	if (operation == MENUOP_SET) {
 		menuPushDialog(&networkHomeDialog);
 	}

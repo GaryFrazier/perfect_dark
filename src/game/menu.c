@@ -464,6 +464,21 @@ char *menuResolveText(uintptr_t thing, void *dialogoritem)
 		return NULL;
 	}
 
+	if (thing > 0x1000000) {
+		switch (thing) {
+			case 0x1000001:
+				return "Online";
+			case 0x1000002:
+				return "Create Server";
+			case 0x1000003:
+				return "Join Server";
+			case 0x1000004:
+				return "Network";
+			default:
+				return "NOT FOUND";
+		};
+	}
+
 	// Text ID
 	if (thing < 0x5a00) {
 		return langGet((u32)thing);

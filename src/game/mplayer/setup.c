@@ -5893,6 +5893,74 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 	return 0;
 }
 
+struct menuitem networkJoinServerItems[] = {
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_BIGFONT,
+		0x1000003,
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkJoinServerDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	0x1000003, // "Join Server"
+	networkJoinServerItems,
+	NULL,
+	0,
+	NULL,
+};
+
+MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	if (operation == MENUOP_SET) {
+		menuPushDialog(&networkJoinServerDialog);
+	}
+
+	return 0;
+}
+
+struct menuitem networkHomeDialogItems[] = {
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
+		0x1000002, // "Create Server"
+		0,
+		networkInitDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_BIGFONT,
+		0x1000003, // "Join Server"
+		1,
+		networkJoinServerDialogInit,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkHomeDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	0x1000004, // "Network"
+	networkHomeDialogItems,
+	NULL,
+	0,
+	NULL,
+};
+
+MenuItemHandlerResult networkHomeDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	if (operation == MENUOP_SET) {
+		menuPushDialog(&networkHomeDialog);
+	}
+
+	return 0;
+}
+
 // END NETWORK
 
 struct menudialogdef g_MpQuickTeamMenuDialog = {
@@ -5941,9 +6009,9 @@ struct menuitem g_CombatSimulatorMenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_BIGFONT,
-		L_MISC_444,
+		0x1000001,
 		0x00000004,
-		networkInitDialog,
+		networkHomeDialogInit,
 	},
 	{ MENUITEMTYPE_END },
 };

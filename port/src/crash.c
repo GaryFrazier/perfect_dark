@@ -118,7 +118,7 @@ static long __stdcall crashHandler(PEXCEPTION_POINTERS exinfo)
 		}
 		return EXCEPTION_CONTINUE_EXECUTION;
 	}
-
+	
 	sysLogPrintf(LOG_ERROR, "FATAL: Crashed: PC=%p CODE=0x%08lx", exinfo->ExceptionRecord->ExceptionAddress, exinfo->ExceptionRecord->ExceptionCode);
 
 	fflush(stderr);

@@ -5804,6 +5804,8 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 #define SERVER_IP "127.0.0.1"  // Change this to the IP address of your UDP server
 #define SERVER_PORT 34254      // Change this to the port your UDP server is listening on
 #define BUFFER_SIZE 1024
+#define MAX_SERVERS 100
+#define TITLE_SIZE 15
 
 // returns error code
 int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
@@ -5876,7 +5878,8 @@ struct menudialogdef networkErrorDialog = {
 
 // JOIN SERVER 
 
-
+struct menuitem* networkServerListItems;
+struct menudialogdef* networkServerListDialog;
 
 struct menuitem networkJoinServerItems[] = {
 	{
@@ -5888,6 +5891,8 @@ struct menuitem networkJoinServerItems[] = {
 		NULL,
 	},
 	{ MENUITEMTYPE_END },
+	NULL,
+	NULL
 };
 
 struct menudialogdef networkJoinServerDialog = {
@@ -5942,18 +5947,76 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 	return 0;
 }
 
+struct Lobby {
+    u8 ip1;
+	u8 ip2;
+	u8 ip3;
+	u8 ip4;
+    u8 players;
+    u8 max_players;
+    u8 match_type_id;
+    u8 map_id;
+	char title[TITLE_SIZE];
+};
+
 MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	if (operation == MENUOP_SET) {
 		char buffer[BUFFER_SIZE];
-		unsigned char message[] = {0x1, 0x2};
+		unsigned char message[] = {0x1};
 
 		int error = sendNetworkRequest(buffer, message, sizeof(message));
 	
 		if (error == 1) {
 			menuPushDialog(&networkErrorDialog);
 		} else {
-			menuPushDialog(&networkJoinServerDialog);
+
+			networkServerListItems = (struct menuitem*)malloc(MAX_SERVERS * sizeof(struct menuitem)); // possible memory leak...
+			networkServerListDialog = (struct menudialogdef*)malloc(sizeof(struct menudialogdef));
+
+			// deserialize data
+			u8 numLobbies = buffer[0];
+
+			for (int i = 0; i < numLobbies; i++) {
+
+				struct Lobby l;
+				memcpy(&l, buffer + 0x8 + i * sizeof(struct Lobby), sizeof(struct Lobby));
+
+				// Initialize individual elements
+				networkServerListItems[i * 2] = (struct menuitem) {
+					MENUITEMTYPE_MARQUEE,
+					0,
+					MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LESSLEFTPADDING,
+					0x1000006,  // "custom"
+					0,
+					NULL,
+				};
+
+				networkServerListItems[(i * 2) + 1] = (struct menuitem) {
+					MENUITEMTYPE_SELECTABLE,
+					0,
+					MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LIST_WIDE | MENUITEMFLAG_LESSLEFTPADDING,
+					0x1000007,  // "Join       "
+					0,
+					NULL,
+				};
+			}
+
+			networkServerListItems[numLobbies * 2] = (struct menuitem) {
+				MENUITEMTYPE_END
+			};
+
+			*networkServerListDialog = (struct menudialogdef) {
+				MENUDIALOGTYPE_DEFAULT,
+				0x1000003, // "Join Server"
+				networkServerListItems,
+				NULL,
+				0,
+				NULL,
+			};
+
+
+			menuPushDialog(networkServerListDialog);
 		}
 	}
 

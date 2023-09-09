@@ -476,6 +476,11 @@ char *menuResolveText(uintptr_t thing, void *dialogoritem)
 				return "Network";
 			case 0x1000005:
 				return "Network Error";
+			case 0x1000006:
+				return "Greps Funhouse : Deathmatch : Facility : 5/10";
+			case 0x1000007:
+				return "Join                      ";
+			
 			default:
 				return "NOT FOUND";
 		};

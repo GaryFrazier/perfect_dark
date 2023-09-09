@@ -5805,7 +5805,6 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 #define SERVER_PORT 34254      // Change this to the port your UDP server is listening on
 #define BUFFER_SIZE 1024
 #define MAX_SERVERS 100
-#define TITLE_SIZE 15
 
 // returns error code
 int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
@@ -5947,18 +5946,6 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 	return 0;
 }
 
-struct Lobby {
-    u8 ip1;
-	u8 ip2;
-	u8 ip3;
-	u8 ip4;
-    u8 players;
-    u8 max_players;
-    u8 match_type_id;
-    u8 map_id;
-	char title[TITLE_SIZE];
-};
-
 MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	if (operation == MENUOP_SET) {
@@ -5979,8 +5966,10 @@ MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem
 
 			for (int i = 0; i < numLobbies; i++) {
 
-				struct Lobby l;
-				memcpy(&l, buffer + 0x8 + i * sizeof(struct Lobby), sizeof(struct Lobby));
+				struct Lobby* l; // possible memory leak again...
+				l = (struct Lobby*)malloc(sizeof(struct Lobby));
+
+				memcpy(l, buffer + 0x8 + (i * sizeof(struct Lobby)), sizeof(struct Lobby));
 
 				// Initialize individual elements
 				networkServerListItems[i * 2] = (struct menuitem) {
@@ -5988,7 +5977,7 @@ MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem
 					0,
 					MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LESSLEFTPADDING,
 					0x1000006,  // "custom"
-					0,
+					l,
 					NULL,
 				};
 

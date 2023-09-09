@@ -1,4 +1,6 @@
 #include <ultra64.h>
+
+#include <stdlib.h>
 #include "constants.h"
 #include "../lib/naudio/n_sndp.h"
 #include "game/camdraw.h"
@@ -32,6 +34,7 @@
 #include "game/gfxmemory.h"
 #include "game/lang.h"
 #include "game/mplayer/mplayer.h"
+#include "game/mplayer/scenarios.h"
 #include "game/pak.h"
 #include "game/options.h"
 #include "game/propobj.h"
@@ -455,10 +458,83 @@ void func0f0f1494(void)
 	}
 }
 
+void trimTrailingSpaces(char* str, int length) {
+    if (str == NULL || length <= 0) {
+        // Handle invalid inputs
+        return;
+    }
+
+    // Start from the end of the string
+    for (int i = length - 1; i >= 0 && str[i] == ' '; i--) {
+        str[i] = '\0'; // Replace trailing spaces with null terminators
+    }
+}
+
+// COPIED BECAUSE LAZY, contributors feel free to refactor
+
+struct mpscenariooverview matchTypes[] = {
+	// name, short name, require feature, team only
+	{ L_MPMENU_246, L_MPMENU_253, 0,                      false }, // "Combat", "Combat"
+	{ L_MPMENU_247, L_MPMENU_254, MPFEATURE_SCENARIO_HTB, false }, // "Hold the Briefcase", "Briefcase"
+	{ L_MPMENU_248, L_MPMENU_255, MPFEATURE_SCENARIO_HTM, false }, // "Hacker Central", "Hacker"
+	{ L_MPMENU_249, L_MPMENU_256, MPFEATURE_SCENARIO_PAC, false }, // "Pop a Cap", "Pop"
+	{ L_MPMENU_250, L_MPMENU_257, MPFEATURE_SCENARIO_KOH, true  }, // "King of the Hill", "Hill"
+	{ L_MPMENU_251, L_MPMENU_258, MPFEATURE_SCENARIO_CTC, true  }, // "Capture the Case", "Capture"
+};
+
+struct mparena arenaList[] = {
+	// Stage, unlock, name
+	{ STAGE_MP_SKEDAR,     0,                          L_MPMENU_119 },
+	{ STAGE_MP_PIPES,      0,                          L_MPMENU_120 },
+	{ STAGE_MP_RAVINE,     MPFEATURE_STAGE_RAVINE,     L_MPMENU_121 },
+	{ STAGE_MP_G5BUILDING, MPFEATURE_STAGE_G5BUILDING, L_MPMENU_122 },
+	{ STAGE_MP_SEWERS,     MPFEATURE_STAGE_SEWERS,     L_MPMENU_123 },
+	{ STAGE_MP_WAREHOUSE,  MPFEATURE_STAGE_WAREHOUSE,  L_MPMENU_124 },
+	{ STAGE_MP_GRID,       MPFEATURE_STAGE_GRID,       L_MPMENU_125 },
+	{ STAGE_MP_RUINS,      MPFEATURE_STAGE_RUINS,      L_MPMENU_126 },
+	{ STAGE_MP_AREA52,     0,                          L_MPMENU_127 },
+	{ STAGE_MP_BASE,       MPFEATURE_STAGE_BASE,       L_MPMENU_128 },
+	{ STAGE_MP_FORTRESS,   MPFEATURE_STAGE_FORTRESS,   L_MPMENU_130 },
+	{ STAGE_MP_VILLA,      MPFEATURE_STAGE_VILLA,      L_MPMENU_131 },
+	{ STAGE_MP_CARPARK,    MPFEATURE_STAGE_CARPARK,    L_MPMENU_132 },
+	{ STAGE_MP_TEMPLE,     MPFEATURE_STAGE_TEMPLE,     L_MPMENU_133 },
+	{ STAGE_MP_COMPLEX,    MPFEATURE_STAGE_COMPLEX,    L_MPMENU_134 },
+	{ STAGE_MP_FELICITY,   MPFEATURE_STAGE_FELICITY,   L_MPMENU_135 },
+	{ 1,                   0,                          L_MPMENU_136 }, // "Random"
+};
+
+///////////
+
+char* concatStrings(char* str1, char* str2) {
+    if (str1 == NULL || str2 == NULL) {
+        // Handle invalid inputs
+        return NULL;
+    }
+
+    // Calculate the length of the concatenated string
+    int totalLength = strlen(str1) + strlen(str2);
+
+    // Allocate memory for the concatenated string
+    char* result = (char*)malloc(totalLength + 1); // +1 for null terminator
+
+    if (result == NULL) {
+        // Handle memory allocation failure
+        return NULL;
+    }
+
+    // Copy the first string into the result
+    strcpy(result, str1);
+
+    // Concatenate the second string to the result
+    strcat(result, str2);
+
+    return result;
+}
+
 char *menuResolveText(uintptr_t thing, void *dialogoritem)
 {
 	char *(*handler)(void *dialogoritem) = (void *)thing;
-
+	
 	// Null/zero
 	if (thing == 0) {
 		return NULL;
@@ -477,7 +553,30 @@ char *menuResolveText(uintptr_t thing, void *dialogoritem)
 			case 0x1000005:
 				return "Network Error";
 			case 0x1000006:
-				return "Greps Funhouse : Deathmatch : Facility : 5/10";
+				struct Lobby* lobby = (struct Lobby*)(((struct menuitem*) dialogoritem)->param3);
+				trimTrailingSpaces(lobby->title, 15);
+
+				char sep[] = " : ";
+				char slash[] = "/";	
+				char* lobbyName = concatStrings(lobby->title, sep);
+				lobbyName = concatStrings(lobbyName, langGet((u32)matchTypes[lobby->match_type_id].shortname));
+				lobbyName = concatStrings(lobbyName, sep);
+
+				lobbyName = concatStrings(lobbyName, langGet((u32)arenaList[lobby->map_id].name));
+
+				lobbyName = concatStrings(lobbyName, sep);
+
+				char pl[2]; 
+				snprintf(pl, sizeof(pl), "%d", lobby->players); 
+				lobbyName = concatStrings(lobbyName, pl);
+				lobbyName = concatStrings(lobbyName, slash);
+
+				char maxPl[2]; 
+				snprintf(maxPl, sizeof(maxPl), "%d", lobby->max_players);
+				lobbyName = concatStrings(lobbyName, maxPl);
+
+				return lobbyName;
+				//return "Greps Funhouse : Deathmatch : Facility : 5/10";
 			case 0x1000007:
 				return "Join                      ";
 			

@@ -3417,6 +3417,19 @@ union handlerdata {
 	struct handlerdata_dialog2 dialog2;
 };
 
+
+struct Lobby {
+    u8 ip1;
+	u8 ip2;
+	u8 ip3;
+	u8 ip4;
+    u8 players;
+    u8 max_players;
+    u8 match_type_id;
+    u8 map_id;
+	char title[15];
+};
+
 struct menuitem {
 	u8 type;
 	u8 param;

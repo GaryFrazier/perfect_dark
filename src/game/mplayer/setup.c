@@ -5805,6 +5805,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 #define SERVER_PORT 34254      // Change this to the port your UDP server is listening on
 #define BUFFER_SIZE 1024
 #define MAX_SERVERS 100
+char* serverName;
 
 // returns error code
 int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
@@ -5904,16 +5905,211 @@ struct menudialogdef networkJoinServerDialog = {
 };
 
 
-// NETWORK STUFF HERE
 
-struct menuitem networkCreateDialogItems[] = {
+// NETWORK CREATE
+
+void deepConfigureNetworkGame(struct menudialogdef *dialogdef, s32 root)
+{
+	s32 i;
+	s32 prevplayernum = g_MpPlayerNum;
+
+	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
+		if (g_Menus[i].curdialog) {
+			g_MpPlayerNum = i;
+			func0f0f8120();
+		}
+	}
+
+	g_MpPlayerNum = prevplayernum;
+
+	g_MenuData.unk008 = root;
+	g_MenuData.unk00c = dialogdef;
+}
+
+void configureNetworkGame(void)
+{
+	mpConfigureQuickTeamPlayers();
+
+	deepConfigureNetworkGame(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+}
+
+MenuItemHandlerResult networkMenuhandlerMpFinishedSetup(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+#if VERSION >= VERSION_NTSC_1_0
+	if (operation == MENUOP_CHECKPREFOCUSED) {
+		return true;
+	}
+#endif
+
+	if (operation == MENUOP_SET) {
+		configureNetworkGame();
+	}
+
+	return 0;
+}
+
+struct menuitem createServerSettingsItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		MENUITEMFLAG_BIGFONT,
-		0x1000002, // Create Server
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LOCKABLEMINOR,
+		L_MPMENU_019, // "Scenario"
+		(uintptr_t)&mpMenuTextScenarioShortName,
+		(void *)&g_MpQuickTeamScenarioMenuDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		0,
+		L_MPMENU_021, // "Options"
+		0,
+		menuhandlerMpOpenOptions,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		L_MPMENU_020, // "Arena"
+		(uintptr_t)&mpMenuTextArenaName,
+		(void *)&g_MpArenaMenuDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		L_MPMENU_023, // "Weapons"
+		(uintptr_t)&mpMenuTextWeaponSetName,
+		(void *)&g_MpQuickTeamWeaponsMenuDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		L_MPMENU_024, // "Limits"
+		0,
+		(void *)&g_MpLimitsMenuDialog,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0x00000082,
+		0,
+		menuhandlerQuickTeamSeparator,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		0,
+		0,
+		L_MISC_449, // "Player 1 Team"
+		0,
+		menuhandlerPlayerTeam,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		1,
+		0,
+		L_MISC_450, // "Player 2 Team"
+		0,
+		menuhandlerPlayerTeam,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		2,
+		0,
+		L_MISC_451, // "Player 3 Team"
+		0,
+		menuhandlerPlayerTeam,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		3,
+		0,
+		L_MISC_452, // "Player 4 Team"
+		0,
+		menuhandlerPlayerTeam,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		0,
+		0,
+		L_MISC_453, // "Number Of Simulants"
+		0,
+		menuhandlerMpNumberOfSimulants,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		0,
+		0,
+		L_MISC_454, // "Simulants Per Team"
+		0,
+		menuhandlerMpSimulantsPerTeam,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		0,
+		0,
+		L_MISC_455, // "Simulant Difficulty"
+		0,
+		mpQuickTeamSimulantDifficultyHandler,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0x00000082,
 		0,
 		NULL,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		0,
+		L_MISC_448, // "Finished Setup"
+		0,
+		networkMenuhandlerMpFinishedSetup,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef createServerSettingsDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	L_MPMENU_017, // "Game Setup"
+	createServerSettingsItems,
+	NULL,
+	0,
+	NULL,
+};
+
+MenuItemHandlerResult createServerNameHandler(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	char *name = data->keyboard.string;
+	
+	switch (operation) {
+	case MENUOP_GETTEXT:
+		//strcpy(name, g_GameFile.name);
+		break;
+	case MENUOP_SETTEXT:
+		//strcpy(g_GameFile.name, name);
+		break;
+	case MENUOP_SET:
+		serverName = (char*)malloc(15);
+		strcpy(serverName, name);
+		menuPushDialog(&createServerSettingsDialog);
+		break;
+	}
+
+	return 0;
+}
+
+struct menuitem networkCreateDialogItems[] = {
+	{
+		MENUITEMTYPE_KEYBOARD,
+		0,
+		0,
+		0,
+		0x00000001,
+		createServerNameHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5932,7 +6128,7 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 	
 	if (operation == MENUOP_SET) {
 		char buffer[BUFFER_SIZE];
-		unsigned char *message = "Hello!";
+		unsigned char message[] = {0x2};
 
 		int error = sendNetworkRequest(buffer, message, sizeof(message));
 	

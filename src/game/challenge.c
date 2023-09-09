@@ -853,27 +853,30 @@ void challengeConsiderMarkingComplete(void)
 
 bool challengeIsFeatureUnlocked(s32 featurenum)
 {
-	if (featurenum == 0) {
+	/*if (featurenum == 0) {
 		return true;
 	}
 
-	return (g_MpFeaturesUnlocked[featurenum] & 1) != 0;
+	return (g_MpFeaturesUnlocked[featurenum] & 1) != 0;*/
+	return true;
 }
 
 bool challengeIsFeatureUnlockedByPlayer(u32 numplayers, s32 featurenum)
 {
-	if (featurenum == 0) {
+	/*if (featurenum == 0) {
 		return true;
 	}
 
-	return (g_MpFeaturesUnlocked[featurenum] & (2 << numplayers)) != 0;
+	return (g_MpFeaturesUnlocked[featurenum] & (2 << numplayers)) != 0;*/
+	return true;
 }
 
 bool challengeIsFeatureUnlockedByDefault(s32 featurenum)
 {
-	if (featurenum) {
+	/*if (featurenum) {
 		return false;
 	}
 
+	return true;*/
 	return true;
 }

@@ -5834,7 +5834,7 @@ int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
 
 		// Receive data from the server
 		socklen_t server_addr_len = sizeof(server_addr);
-		ssize_t bytes_received = recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&server_addr, &server_addr_len);
+		ssize_t bytes_received = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&server_addr, &server_addr_len);
 		if (bytes_received == -1) {
 			close(sockfd);
 			return 1;

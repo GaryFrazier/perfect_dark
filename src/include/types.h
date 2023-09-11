@@ -3418,17 +3418,6 @@ union handlerdata {
 };
 
 
-struct Lobby {
-    u8 ip1;
-	u8 ip2;
-	u8 ip3;
-	u8 ip4;
-    u8 players;
-    u8 max_players;
-    u8 match_type_id;
-    u8 map_id;
-	char title[15];
-};
 
 struct menuitem {
 	u8 type;
@@ -4102,6 +4091,41 @@ struct mpsetup {
 	/*0x800acba0*/ u8 weapons[NUM_MPWEAPONSLOTS];
 	/*0x800acba6*/ u8 paused;
 	/*0x800acba8*/ struct fileguid fileguid;
+};
+
+struct Lobby {
+    u8 ip1;
+	u8 ip2;
+	u8 ip3;
+	u8 ip4;
+    u8 players;
+    u8 max_players;
+
+// mpoptions, couldnt deserialize into the actual obj
+    /*0x800acb88*/ char name[12];
+	// why cant I combine this into a u32, mysteries
+	/*0x800acb98*/ u8 options1;
+	/*0x800acb98*/ u8 options2;
+	/*0x800acb98*/ u8 options3;
+	/*0x800acb98*/ u8 options4;
+	/*0x800acb98*/ u8 scenario;
+	/*0x800acb99*/ u8 stagenum;
+	/*0x800acb9a*/ u8 timelimit;
+	/*0x800acb9b*/ u8 scorelimit;
+	/*0x800acb9c*/ u16 teamscorelimit;
+
+	/**
+	 * Each bit signifies that a player or sim is participating.
+	 *
+	 * Bits 0x000f are for players
+	 * Bits 0x0ff0 are for sims
+	 * Bits 0xf000 are probably not used
+	 */
+	/*0x800acb9e*/ u16 chrslots;
+	/*0x800acba0*/ u8 weapons[NUM_MPWEAPONSLOTS];
+	/*0x800acba6*/ u8 paused;
+	s32 fileid;
+	u16 deviceserial;
 };
 
 struct bossfile {
@@ -6113,3 +6137,6 @@ struct xz {
 };
 
 #endif
+
+
+

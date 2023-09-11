@@ -505,6 +505,17 @@ struct mparena arenaList[] = {
 
 ///////////
 
+
+struct mparena* getStage(struct mparena itemList[], int itemCount, int targetID) {
+    for (int i = 0; i < itemCount; i++) {
+        if (itemList[i].stagenum == targetID) {
+            return &itemList[i]; // Return a pointer to the matching item
+        }
+    }
+    return NULL; // Return NULL if the item is not found
+}
+
+
 char* concatStrings(char* str1, char* str2) {
     if (str1 == NULL || str2 == NULL) {
         // Handle invalid inputs
@@ -554,24 +565,22 @@ char *menuResolveText(uintptr_t thing, void *dialogoritem)
 				return "Network Error";
 			case 0x1000006:
 				struct Lobby* lobby = (struct Lobby*)(((struct menuitem*) dialogoritem)->param3);
-				trimTrailingSpaces(lobby->title, 15);
 
 				char sep[] = " : ";
 				char slash[] = "/";	
-				char* lobbyName = concatStrings(lobby->title, sep);
-				lobbyName = concatStrings(lobbyName, langGet((u32)matchTypes[lobby->match_type_id].shortname));
+				char* lobbyName = concatStrings(lobby->name, sep);
+				lobbyName = concatStrings(lobbyName, langGet((u32)matchTypes[lobby->scenario].shortname));
 				lobbyName = concatStrings(lobbyName, sep);
 
-				lobbyName = concatStrings(lobbyName, langGet((u32)arenaList[lobby->map_id].name));
-
+				lobbyName = concatStrings(lobbyName, langGet((u32)(getStage(arenaList, 17, lobby->stagenum))->name));
 				lobbyName = concatStrings(lobbyName, sep);
 
-				char pl[2]; 
+				char pl[10]; 
 				snprintf(pl, sizeof(pl), "%d", lobby->players); 
 				lobbyName = concatStrings(lobbyName, pl);
 				lobbyName = concatStrings(lobbyName, slash);
 
-				char maxPl[2]; 
+				char maxPl[10]; 
 				snprintf(maxPl, sizeof(maxPl), "%d", lobby->max_players);
 				lobbyName = concatStrings(lobbyName, maxPl);
 

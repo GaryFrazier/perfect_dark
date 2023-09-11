@@ -1,6 +1,13 @@
 #ifdef _WIN32 // Windows-specific headers
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 #pragma comment(lib, "ws2_32.lib")
 #else // Unix-like systems headers
 #include <sys/socket.h>
@@ -202,7 +209,7 @@ MenuItemHandlerResult mpArenaMenuHandler(s32 operation, struct menuitem *item, u
 
 				count++;
 			}
-		}
+		} 
 
 		g_MpSetup.stagenum = g_MpArenas[i].stagenum;
 		break;
@@ -5806,6 +5813,68 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 #define BUFFER_SIZE 1024
 #define MAX_SERVERS 100
 char* serverName;
+int inGame = 0;
+
+void processReceivedData(const char *data, size_t length) {
+    // Implement your logic to process the received data here
+    printf("Received Data: %s\n", data);
+}
+
+
+#ifdef _WIN32
+DWORD WINAPI udpThread(LPVOID arg) {
+#else
+void *udpThread(void *arg) {
+#endif
+    int sockfd;
+	struct sockaddr_in server_addr;
+	char buffer[BUFFER_SIZE];
+	
+	// Create a UDP socket
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+		return 1;
+	}
+
+	// Configure server address
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(SERVER_PORT);
+	if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+		close(sockfd);
+		return 1;
+	}
+
+    while (1) {
+		// Send data to the server
+		unsigned char message[] = {0x1}; // TODO CHANGE TO REAL DATA
+
+		if (sendto(sockfd, message, sizeof(message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+			perror("sendto");
+			close(sockfd);
+			return 1;
+		}
+		
+        ssize_t bytesRead = recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, NULL, NULL);
+        if (bytesRead > 0) {
+            buffer[bytesRead] = '\0'; // Null-terminate the received data
+            processReceivedData(buffer, bytesRead);
+        } else if (bytesRead == 0) {
+            // Connection closed (not applicable for UDP)
+        } else {
+            // No data received yet (non-blocking)
+            usleep(100000); // Sleep for a while to avoid busy-waiting
+        }
+    }
+
+    // Close the socket (this is usually not reached in this example)
+    close(sockfd);
+
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
 
 // returns error code
 int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
@@ -5827,7 +5896,7 @@ int sendNetworkRequest(char* buffer, unsigned char* message, int messageSize) {
 		}
 
 		// Send data to the server
-
+		
 		if (sendto(sockfd, message, messageSize, 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
 			perror("sendto");
 			close(sockfd);
@@ -5904,9 +5973,76 @@ struct menudialogdef networkJoinServerDialog = {
 	NULL,
 };
 
+// NETWORK QUICK GO LOBBY
+
+struct menuitem networkQuickGoItems[] = {
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		L_MISC_456, // "Start Game"
+		0,
+		(void *)&g_MpReadyMenuDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		L_MISC_457, // "Drop Out"
+		0,
+		(void *)&g_MpDropOutMenuDialog,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef networkQuickGoDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	L_MISC_460, // "Quick Go"
+	networkQuickGoItems,
+	menudialogMpQuickGo,
+	0,
+	NULL,
+};
 
 
 // NETWORK CREATE
+
+void deepDeepConfigureNetworkGame(void)
+{
+#ifdef AVOID_UB
+	u32 mpindex = g_MpPlayerNum % MAX_PLAYERS;
+	struct menudialog *prev = g_Menus[mpindex].curdialog;
+	s32 i;
+#else
+	struct menudialog *prev = g_Menus[g_MpPlayerNum].curdialog;
+	s32 i;
+#endif
+
+	if (g_MenuData.unk66e > 0) {
+		for (i = g_MenuData.unk66e; i >= 0; i--) {
+			//func0f0f3220(i);
+		}
+	}
+
+#ifdef AVOID_UB
+	mpindex = g_MpPlayerNum;
+	if (mpindex >= MAX_PLAYERS)
+		mpindex -= MAX_PLAYERS;
+	if (g_Menus[mpindex].curdialog == prev) {
+		while (g_Menus[mpindex].depth > 0) {
+			menuPopDialog();
+		}
+	}
+#else
+	if (g_Menus[g_MpPlayerNum].curdialog == prev) {
+		while (g_Menus[g_MpPlayerNum].depth > 0) {
+			menuPopDialog();
+		}
+	}
+#endif
+}
+
+
 
 void deepConfigureNetworkGame(struct menudialogdef *dialogdef, s32 root)
 {
@@ -5916,7 +6052,7 @@ void deepConfigureNetworkGame(struct menudialogdef *dialogdef, s32 root)
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
 		if (g_Menus[i].curdialog) {
 			g_MpPlayerNum = i;
-			func0f0f8120();
+			deepDeepConfigureNetworkGame();
 		}
 	}
 
@@ -5930,7 +6066,46 @@ void configureNetworkGame(void)
 {
 	mpConfigureQuickTeamPlayers();
 
-	deepConfigureNetworkGame(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+	char buffer[BUFFER_SIZE];
+	unsigned char message[BUFFER_SIZE];
+	message[0] = 0x2; //create lobby
+
+	memcpy(message + 1, &g_MpSetup, sizeof(struct mpsetup));
+
+	int error = sendNetworkRequest(buffer, message, BUFFER_SIZE);
+
+	if (error == 1) {
+		menuPushDialog(&networkErrorDialog);
+		return 0;
+	}
+
+
+// and poll player list, maybe make this host/client agnostic
+
+#ifdef _WIN32
+    HANDLE udpThreadHandle;
+#else
+    pthread_t udpThreadID;
+#endif
+
+#ifdef _WIN32
+    // Create a background thread to handle UDP socket operations (Windows)
+    udpThreadHandle = CreateThread(NULL, 0, udpThread, NULL, 0, NULL);
+    if (udpThreadHandle == NULL) {
+        perror("CreateThread");
+        menuPushDialog(&networkErrorDialog);
+		return 0;
+    }
+#else
+    // Create a background thread to handle UDP socket operations (non-Windows)
+    if (pthread_create(&udpThreadID, NULL, udpThread, NULL) != 0) {
+        perror("pthread_create");
+        menuPushDialog(&networkErrorDialog);
+		return 0;
+    }
+#endif
+
+	deepConfigureNetworkGame(&networkQuickGoDialog, MENUROOT_MPSETUP);
 }
 
 MenuItemHandlerResult networkMenuhandlerMpFinishedSetup(s32 operation, struct menuitem *item, union handlerdata *data)
@@ -5940,6 +6115,8 @@ MenuItemHandlerResult networkMenuhandlerMpFinishedSetup(s32 operation, struct me
 		return true;
 	}
 #endif
+
+
 
 	if (operation == MENUOP_SET) {
 		configureNetworkGame();
@@ -5990,68 +6167,12 @@ struct menuitem createServerSettingsItems[] = {
 		(void *)&g_MpLimitsMenuDialog,
 	},
 	{
-		MENUITEMTYPE_SEPARATOR,
+		MENUITEMTYPE_CHECKBOX,
 		0,
-		0,
-		0x00000082,
-		0,
-		menuhandlerQuickTeamSeparator,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		0,
-		0,
-		L_MISC_449, // "Player 1 Team"
-		0,
-		menuhandlerPlayerTeam,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		1,
-		0,
-		L_MISC_450, // "Player 2 Team"
-		0,
-		menuhandlerPlayerTeam,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		2,
-		0,
-		L_MISC_451, // "Player 3 Team"
-		0,
-		menuhandlerPlayerTeam,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		3,
-		0,
-		L_MISC_452, // "Player 4 Team"
-		0,
-		menuhandlerPlayerTeam,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		0,
-		0,
-		L_MISC_453, // "Number Of Simulants"
-		0,
-		menuhandlerMpNumberOfSimulants,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		0,
-		0,
-		L_MISC_454, // "Simulants Per Team"
-		0,
-		menuhandlerMpSimulantsPerTeam,
-	},
-	{
-		MENUITEMTYPE_DROPDOWN,
-		0,
-		0,
-		L_MISC_455, // "Simulant Difficulty"
-		0,
-		mpQuickTeamSimulantDifficultyHandler,
+		MENUITEMFLAG_LOCKABLEMINOR,
+		L_MPMENU_071, // "Teams Enabled"
+		0x00000002,
+		menuhandlerMpTeamsEnabled,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -6094,7 +6215,8 @@ MenuItemHandlerResult createServerNameHandler(s32 operation, struct menuitem *it
 		break;
 	case MENUOP_SET:
 		serverName = (char*)malloc(15);
-		strcpy(serverName, name);
+		strcpy(serverName, name); // not used , delete this, should be in options
+		strcpy(g_MpSetup.name, name);
 		menuPushDialog(&createServerSettingsDialog);
 		break;
 	}
@@ -6128,8 +6250,7 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 	
 	if (operation == MENUOP_SET) {
 		char buffer[BUFFER_SIZE];
-		unsigned char message[] = {0x2};
-
+		unsigned char message[] = {0x1};
 		int error = sendNetworkRequest(buffer, message, sizeof(message));
 	
 		if (error == 1) {
@@ -6141,6 +6262,7 @@ MenuItemHandlerResult networkInitDialog(s32 operation, struct menuitem *item, un
 
 	return 0;
 }
+
 
 MenuItemHandlerResult networkJoinServerDialogInit(s32 operation, struct menuitem *item, union handlerdata *data)
 {

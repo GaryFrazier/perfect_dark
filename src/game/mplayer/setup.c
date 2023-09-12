@@ -43,6 +43,7 @@
 #include "data.h"
 #include "gbiex.h"
 #include "types.h"
+#include <time.h>
 
 struct menuitem g_MpCharacterMenuItems[];
 struct menudialogdef g_MpAddSimulantMenuDialog;
@@ -5950,6 +5951,10 @@ struct menudialogdef networkErrorDialog = {
 struct menuitem* networkServerListItems;
 struct menudialogdef* networkServerListDialog;
 
+// Generate a random int32 (32-bit integer)
+int playerId;
+
+
 struct menuitem networkJoinServerItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -6066,11 +6071,19 @@ void configureNetworkGame(void)
 {
 	mpConfigureQuickTeamPlayers();
 
+	srand(time(NULL));
+
+	// Generate a random int32 (32-bit integer)
+	playerId = rand();
+
 	char buffer[BUFFER_SIZE];
 	unsigned char message[BUFFER_SIZE];
 	message[0] = 0x2; //create lobby
-
-	memcpy(message + 1, &g_MpSetup, sizeof(struct mpsetup));
+	message[1] = (playerId >> 0) & 0xFF; // Extract the lowest byte
+    message[2] = (playerId >> 8) & 0xFF; // Extract the second lowest byte
+    message[3] = (playerId >> 16) & 0xFF; // Extract the third lowest byte
+    message[4] = (playerId >> 24) & 0xFF; // Extract the highest byte
+	memcpy(message + 5, &g_MpSetup, sizeof(struct mpsetup));
 
 	int error = sendNetworkRequest(buffer, message, BUFFER_SIZE);
 

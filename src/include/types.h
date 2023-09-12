@@ -4094,24 +4094,20 @@ struct mpsetup {
 };
 
 struct Lobby {
-    u8 ip1;
-	u8 ip2;
-	u8 ip3;
-	u8 ip4;
-    u8 players;
-    u8 max_players;
+	char id;
+    char players;
+    char max_players;
 
 // mpoptions, couldnt deserialize into the actual obj
     /*0x800acb88*/ char name[12];
 	// why cant I combine this into a u32, mysteries
-	/*0x800acb98*/ u8 options1;
-	/*0x800acb98*/ u8 options2;
-	/*0x800acb98*/ u8 options3;
-	/*0x800acb98*/ u8 options4;
-	/*0x800acb98*/ u8 scenario;
-	/*0x800acb99*/ u8 stagenum;
-	/*0x800acb9a*/ u8 timelimit;
-	/*0x800acb9b*/ u8 scorelimit;
+	/*0x800acb98*/ char options2;
+	/*0x800acb98*/ char options3;
+	/*0x800acb98*/ char options4;
+	/*0x800acb98*/ char scenario;
+	/*0x800acb99*/ char stagenum;
+	/*0x800acb9a*/ char timelimit;
+	/*0x800acb9b*/ char scorelimit;
 	/*0x800acb9c*/ u16 teamscorelimit;
 
 	/**
@@ -4122,10 +4118,11 @@ struct Lobby {
 	 * Bits 0xf000 are probably not used
 	 */
 	/*0x800acb9e*/ u16 chrslots;
-	/*0x800acba0*/ u8 weapons[NUM_MPWEAPONSLOTS];
-	/*0x800acba6*/ u8 paused;
+	/*0x800acba0*/ char weapons[NUM_MPWEAPONSLOTS];
+	/*0x800acba6*/ char paused;
 	s32 fileid;
 	u16 deviceserial;
+	
 };
 
 struct bossfile {
